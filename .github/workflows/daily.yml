@@ -1,0 +1,35 @@
+name: Auto Daily Macro Update
+
+on:
+  schedule:
+    # 每天固定在 UTC 10:00 自动触发（对应北京时间 18:00，股市收盘后）
+    - cron: '0 10 * * 1-5'
+  workflow_dispatch: # 允许在 GitHub 网页上手动点击按钮随时立即刷新
+
+permissions:
+  contents: write # 必须声明写权限，否则机器人无法向仓库推送新生成的 HTML
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出当前仓库代码
+        uses: actions/checkout@v4
+
+      - name: 配置 Python 3.11 运行环境
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 安装计算依赖库
+        run: pip install pandas numpy
+
+      - name: 运行更新脚本并生成最新页面
+        run: python update_data.py
+
+      - name: 自动将最新 index.html 提交并推送到仓库
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update macro dashboard: $(date +'%Y-%m-%d')" && git push)
